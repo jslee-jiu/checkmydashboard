@@ -1,4 +1,8 @@
-generator client { provider = "prisma-client-js" }
+// prisma/schema.prisma  (UTF-8, NO BOM)
+
+generator client {
+  provider = "prisma-client-js"
+}
 
 datasource db {
   provider  = "postgresql"
