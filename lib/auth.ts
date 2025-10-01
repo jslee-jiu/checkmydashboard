@@ -1,13 +1,23 @@
 import { cookies } from "next/headers";
-import { SignJWT, jwtVerify } from "jose";
+import { SignJWT, jwtVerify, type JWTPayload } from "jose";
 
 const COOKIE = "cmd_session";
 const secretKey = process.env.JWT_SECRET || "";
 const secret = new TextEncoder().encode(secretKey);
 
-export async function signToken(payload: object) {
+// 우리가 담을 세션 페이로드 형태
+export type SessionPayload = {
+  uid: string;
+  email: string;
+} & JWTPayload;
+
+export async function signToken(payload: { uid: string; email: string }) {
   if (!secretKey) throw new Error("JWT_SECRET missing");
-  return await new SignJWT(payload)
+
+  // JWTPayload로 맞춰서 전달
+  const p: SessionPayload = { ...payload };
+
+  return await new SignJWT(p)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")
@@ -15,18 +25,18 @@ export async function signToken(payload: object) {
 }
 
 export async function getSessionUser() {
-  const cookie = (await cookies()).get(COOKIE)?.value;
+  const cookie = cookies().get(COOKIE)?.value;
   if (!cookie) return null;
   try {
-    const { payload } = await jwtVerify(cookie, secret);
-    return payload as { uid: string; email: string };
+    const { payload } = await jwtVerify<SessionPayload>(cookie, secret);
+    return { uid: payload.uid, email: payload.email };
   } catch {
     return null;
   }
 }
 
 export async function setSessionCookie(token: string) {
-  (await cookies()).set(COOKIE, token, {
+  cookies().set(COOKIE, token, {
     httpOnly: true,
     secure: true,
     sameSite: "lax",
@@ -36,5 +46,5 @@ export async function setSessionCookie(token: string) {
 }
 
 export async function clearSessionCookie() {
-  (await cookies()).set(COOKIE, "", { path: "/", maxAge: 0 });
+  cookies().set(COOKIE, "", { path: "/", maxAge: 0 });
 }
